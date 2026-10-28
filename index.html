@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ORBITRA'26 Mission Control Dashboard</title>
+    <!-- Tailwind CSS for layout -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts for Sci-Fi aesthetic -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Base Styling & Theming */
+        :root {
+            --bg-color: #030712; /* Very dark blue/black */
+            --panel-bg: rgba(9, 22, 46, 0.7);
+            --primary-glow: #00f3ff; /* Cyan */
+            --secondary-glow: #ff0055; /* Neon Red/Pink for BPM */
+            --power-glow: #f1fa8c; /* Neon Yellow for Power */
+            --text-main: #e0e7ff;
+            --grid-color: rgba(0, 243, 255, 0.05);
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Space Mono', monospace;
+            overflow-x: hidden;
+            /* Sci-Fi Grid Background */
+            background-image: 
+                linear-gradient(var(--grid-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: 30px 30px;
+        }
+
+        h1, h2, h3, .orbitron-font {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* HUD Panel Styling */
+        .hud-panel {
+            background: var(--panel-bg);
+            border: 1px solid rgba(0, 243, 255, 0.3);
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.1), inset 0 0 20px rgba(0, 243, 255, 0.05);
+            position: relative;
+            backdrop-filter: blur(4px);
+            transition: all 0.3s ease;
+        }
+
+        /* Sci-Fi Corner Accents */
+        .hud-panel::before, .hud-panel::after {
+            content: '';
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            border: 2px solid var(--primary-glow);
+            transition: all 0.3s ease;
+        }
+        .hud-panel::before {
+            top: -1px; left: -1px;
+            border-right: none; border-bottom: none;
+        }
+        .hud-panel::after {
+            bottom: -1px; right: -1px;
+            border-left: none; border-top: none;
+        }
+
+        /* Special Styling for BPM Panel */
+        .bpm-panel {
+            border-color: rgba(255, 0, 85, 0.4);
+            box-shadow: 0 0 15px rgba(255, 0, 85, 0.15), inset 0 0 20px rgba(255, 0, 85, 0.05);
+        }
+        .bpm-panel::before, .bpm-panel::after {
+            border-color: var(--secondary-glow);
+        }
+        .text-glow-red {
+            text-shadow: 0 0 5px var(--secondary-glow), 0 0 10px var(--secondary-glow);
+            color: #ff6b9e;
+        }
+
+        /* Power Panel Styling */
+        .power-panel {
+            border-color: rgba(241, 250, 140, 0.4);
+            box-shadow: 0 0 15px rgba(241, 250, 140, 0.15), inset 0 0 20px rgba(241, 250, 140, 0.05);
+        }
+        .power-panel::before, .power-panel::after {
+            border-color: var(--power-glow);
+        }
+        .text-glow-yellow {
+            text-shadow: 0 0 5px var(--power-glow), 0 0 10px var(--power-glow);
+            color: #f1fa8c;
+        }
+
+        /* Text Glow Effects */
+        .text-glow-cyan {
+            text-shadow: 0 0 5px var(--primary-glow), 0 0 15px var(--primary-glow);
+            color: #8be9fd;
+        }
+        .data-value {
+            color: #fff;
+            font-weight: bold;
+            text-shadow: 0 0 8px var(--primary-glow);
+        }
+
+        /* Blinking Animation for Status */
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background-color: #50fa7b;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #50fa7b;
+            margin-right: 8px;
+            animation: blink 1.5s infinite;
+        }
+
+        /* 3D Orbit Animation CSS */
+        .orbit-container {
+            position: relative;
+            width: 320px;
+            height: 320px;
+            margin: 0 auto;
+            transform-style: preserve-3d;
+            perspective: 800px;
+        }
+
+        .planet {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 120px;
+            height: 120px;
+            margin-top: -60px;
+            margin-left: -60px;
+            border-radius: 50%;
+            /* Earth-like gradient */
+            background: radial-gradient(circle at 30% 30%, #2e7d32 0%, #0d47a1 40%, #000000 90%);
+            box-shadow: 0 0 40px rgba(13, 71, 161, 0.8), inset -20px -20px 40px rgba(0,0,0,0.8);
+            z-index: 10;
+        }
+
+        /* Atmospheric Glow */
+        .planet::before {
+            content: '';
+            position: absolute;
+            top: -5%; left: -5%; right: -5%; bottom: -5%;
+            border-radius: 50%;
+            background: radial-gradient(circle at center, transparent 60%, rgba(139, 233, 253, 0.4) 100%);
+            z-index: 11;
+        }
+
+        .orbit-path {
+            position: absolute;
+            top: 10%;
+            left: 5%;
+            width: 90%;
+            height: 80%;
+            border: 1px dashed rgba(0, 243, 255, 0.4);
+            border-radius: 50%;
+            transform: rotateX(70deg) rotateZ(0deg);
+            transform-style: preserve-3d;
+            animation: rotateOrbit 12s linear infinite;
+            z-index: 5;
+        }
+
+        /* Satellite Design */
+        .satellite-wrapper {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            width: 0;
+            height: 0;
+            /* Correcting the rotation so satellite faces forward */
+            transform: rotateX(-70deg) translate(-50%, -15px); 
+        }
+
+        .satellite {
+            width: 16px;
+            height: 16px;
+            background-color: #fff;
+            box-shadow: 0 0 15px #fff, 0 0 30px var(--primary-glow);
+            position: relative;
+        }
+
+        /* Solar Panels */
+        .satellite::before, .satellite::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 25px;
+            height: 8px;
+            background: repeating-linear-gradient(
+                90deg,
+                #0d47a1,
+                #0d47a1 2px,
+                #1976d2 2px,
+                #1976d2 4px
+            );
+            border: 1px solid #90caf9;
+            transform: translateY(-50%);
+        }
+        .satellite::before { left: -28px; }
+        .satellite::after { right: -28px; }
+
+        @keyframes rotateOrbit {
+            0% { transform: rotateX(70deg) rotateZ(0deg); }
+            100% { transform: rotateX(70deg) rotateZ(360deg); }
+        }
+        
+        /* CRT Scanline effect */
+        .scanlines {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 4px, 3px 100%;
+            z-index: 9999;
+            pointer-events: none;
+            opacity: 0.4;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8 flex flex-col">
+    <!-- Scanline Overlay -->
+    <div class="scanlines"></div>
+
+    <!-- Header -->
+    <header class="w-full flex justify-between items-center mb-8 border-b border-[rgba(0,243,255,0.2)] pb-4 relative z-10">
+        <div>
+            <h1 class="text-3xl md:text-5xl font-black text-glow-cyan tracking-wider">ORBITRA'26</h1>
+            <p class="text-sm text-gray-400 mt-1 tracking-widest">MISSION TELEMETRY DASHBOARD // LIVE</p>
+        </div>
+        <div class="text-right hidden sm:block">
+            <p class="text-xs text-gray-400">SYSTEM TIME</p>
+            <p id="sys-time" class="text-lg text-glow-cyan orbitron-font">00:00:00 UTC</p>
+            <p class="text-xs mt-1 text-[#50fa7b]"><span class="status-indicator"></span>DATALINK SECURE</p>
+        </div>
+    </header>
+
+    <!-- Main Dashboard Grid -->
+    <main class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-grow relative z-10">
+        
+        <!-- Left Column: Location & Motion -->
+        <div class="flex flex-col gap-6">
+            <!-- GPS Panel -->
+            <div class="hud-panel p-5">
+                <div class="flex justify-between items-start mb-4">
+                    <h2 class="text-xl text-glow-cyan uppercase">NEO-6M GPS</h2>
+                    <span class="text-xs bg-[rgba(0,243,255,0.2)] px-2 py-1 rounded text-cyan-300">LOCK: <span id="gps-sats">8</span></span>
+                </div>
+                <div class="space-y-3">
+                    <div class="flex justify-between border-b border-[rgba(255,255,255,0.1)] pb-1">
+                        <span class="text-gray-400 text-sm">LATITUDE</span>
+                        <span id="gps-lat" class="data-value">26.7606° N</span>
+                    </div>
+                    <div class="flex justify-between border-b border-[rgba(255,255,255,0.1)] pb-1">
+                        <span class="text-gray-400 text-sm">LONGITUDE</span>
+                        <span id="gps-lon" class="data-value">83.3732° E</span>
+                    </div>
+                    <div class="flex justify-between border-b border-[rgba(255,255,255,0.1)] pb-1">
+                        <span class="text-gray-400 text-sm">VELOCITY</span>
+                        <span id="gps-vel" class="data-value">7.66 km/s</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- IMU Panel -->
+            <div class="hud-panel p-5 flex-grow">
+                <h2 class="text-xl text-glow-cyan uppercase mb-4">MPU6050 IMU</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <!-- Accelerometer -->
+                    <div class="bg-[rgba(0,0,0,0.3)] p-3 rounded">
+                        <h3 class="text-xs text-gray-400 mb-2 border-b border-[rgba(0,243,255,0.2)] pb-1">ACCELEROMETER (g)</h3>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between"><span>X:</span> <span id="acc-x" class="data-value">0.00</span></div>
+                            <div class="flex justify-between"><span>Y:</span> <span id="acc-y" class="data-value">0.00</span></div>
+                            <div class="flex justify-between"><span>Z:</span> <span id="acc-z" class="data-value">1.00</span></div>
+                        </div>
+                    </div>
+                    <!-- Gyroscope -->
+                    <div class="bg-[rgba(0,0,0,0.3)] p-3 rounded">
+                        <h3 class="text-xs text-gray-400 mb-2 border-b border-[rgba(0,243,255,0.2)] pb-1">GYROSCOPE (°/s)</h3>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between"><span>X:</span> <span id="gyr-x" class="data-value">0.00</span></div>
+                            <div class="flex justify-between"><span>Y:</span> <span id="gyr-y" class="data-value">0.00</span></div>
+                            <div class="flex justify-between"><span>Z:</span> <span id="gyr-z" class="data-value">0.00</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center Column: Visualization -->
+        <div class="flex flex-col items-center justify-center p-4 min-h-[400px]">
+            <div class="orbit-container">
+                <div class="planet"></div>
+                <div class="orbit-path">
+                    <div class="satellite-wrapper">
+                        <div class="satellite"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-12 text-center w-full max-w-sm">
+                <div class="bg-[rgba(0,243,255,0.1)] border border-[rgba(0,243,255,0.3)] rounded p-3">
+                    <h3 class="text-xs text-cyan-300 mb-1 orbitron-font">ORBITAL STATUS</h3>
+                    <p class="text-lg text-glow-cyan">NOMINAL</p>
+                    <div class="w-full bg-gray-800 h-1 mt-2 rounded overflow-hidden">
+                        <div class="bg-cyan-400 h-full w-[100%] shadow-[0_0_10px_#00f3ff]"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Environment & Biological -->
+        <div class="flex flex-col gap-6">
+            <!-- Environment Panel -->
+            <div class="hud-panel p-5">
+                <h2 class="text-xl text-glow-cyan uppercase mb-4">BMP280 ENV</h2>
+                <div class="space-y-4">
+                    <div class="flex flex-col">
+                        <span class="text-gray-400 text-sm">BAROMETRIC PRESSURE</span>
+                        <div class="flex items-end justify-between">
+                            <span id="bmp-pres" class="text-2xl data-value">1013.25</span>
+                            <span class="text-sm text-cyan-300">hPa</span>
+                        </div>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-gray-400 text-sm">ESTIMATED ALTITUDE</span>
+                        <div class="flex items-end justify-between">
+                            <span id="bmp-alt" class="text-2xl data-value">405.2</span>
+                            <span class="text-sm text-cyan-300">meters</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Thermal Panel -->
+            <div class="hud-panel p-5">
+                <h2 class="text-xl text-glow-cyan uppercase mb-4">DHT11 THERMAL</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-[rgba(0,0,0,0.3)] p-4 rounded text-center">
+                        <span class="text-gray-400 text-xs block mb-1">INT TEMP</span>
+                        <span id="dht-temp" class="text-xl data-value text-[#ffb86c]">22.4</span>
+                        <span class="text-xs text-gray-500">°C</span>
+                    </div>
+                    <div class="bg-[rgba(0,0,0,0.3)] p-4 rounded text-center">
+                        <span class="text-gray-400 text-xs block mb-1">INT HUMIDITY</span>
+                        <span id="dht-hum" class="text-xl data-value">45.0</span>
+                        <span class="text-xs text-gray-500">%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Power System Panel -->
+            <div class="hud-panel power-panel p-5">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-xl text-glow-yellow uppercase">POWER SYSTEM</h2>
+                    <svg class="w-6 h-6 text-[#f1fa8c]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                </div>
+                <div class="flex flex-col items-center justify-center py-4 bg-[rgba(241,250,140,0.05)] rounded border border-[rgba(241,250,140,0.2)]">
+                    <span class="text-gray-400 text-sm mb-1">BATTERY VOLTAGE</span>
+                    <div class="flex items-baseline gap-2">
+                        <span id="bat-vol" class="text-5xl font-bold text-[#f1fa8c] text-glow-yellow" style="font-family: 'Orbitron', sans-serif;">7.40</span>
+                        <span class="text-sm text-[rgba(241,250,140,0.7)]">V</span>
+                    </div>
+                    <!-- Battery Bar -->
+                    <div class="w-full h-4 mt-4 bg-gray-800 rounded border border-gray-600 p-0.5">
+                        <div id="bat-bar" class="h-full bg-gradient-to-r from-green-500 to-[#f1fa8c] rounded w-[95%] shadow-[0_0_8px_#f1fa8c] transition-all duration-300"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Simulation Data baselines
+        let simData = {
+            gps: { lat: 26.7606, lon: 83.3732, vel: 7.66 },
+            imu: { 
+                acc: { x: 0.02, y: -0.01, z: 1.00 }, 
+                gyr: { x: 0.5, y: -0.2, z: 0.1 } 
+            },
+            bmp: { pres: 1013.25, alt: 405.2 },
+            dht: { temp: 22.4, hum: 45.0 },
+            power: { voltage: 7.4 }
+        };
+
+        // Utility to generate a small random variation
+        function jitter(base, variance, precision = 2) {
+            const val = base + (Math.random() * variance * 2) - variance;
+            return val.toFixed(precision);
+        }
+
+        // DOM Elements
+        const elLat = document.getElementById('gps-lat');
+        const elLon = document.getElementById('gps-lon');
+        const elVel = document.getElementById('gps-vel');
+        
+        const elAccX = document.getElementById('acc-x');
+        const elAccY = document.getElementById('acc-y');
+        const elAccZ = document.getElementById('acc-z');
+        const elGyrX = document.getElementById('gyr-x');
+        const elGyrY = document.getElementById('gyr-y');
+        const elGyrZ = document.getElementById('gyr-z');
+
+        const elBmpPres = document.getElementById('bmp-pres');
+        const elBmpAlt = document.getElementById('bmp-alt');
+        
+        const elDhtTemp = document.getElementById('dht-temp');
+        const elDhtHum = document.getElementById('dht-hum');
+        
+        const elBatVol = document.getElementById('bat-vol');
+        const elBatBar = document.getElementById('bat-bar');
+        const elTime = document.getElementById('sys-time');
+
+        // Update loop function
+        function updateTelemetry() {
+            // Update Time
+            const now = new Date();
+            elTime.textContent = now.toISOString().split('T')[1].split('.')[0] + ' UTC';
+
+            // GPS Simulation (moving slightly)
+            simData.gps.lat += 0.0001; // simulate orbital movement
+            simData.gps.lon += 0.00015;
+            elLat.textContent = simData.gps.lat.toFixed(4) + '° N';
+            elLon.textContent = simData.gps.lon.toFixed(4) + '° E';
+            elVel.textContent = jitter(simData.gps.vel, 0.02, 2) + ' km/s';
+
+            // IMU Simulation (vibrations/micro-movements)
+            elAccX.textContent = jitter(simData.imu.acc.x, 0.05, 3);
+            elAccY.textContent = jitter(simData.imu.acc.y, 0.05, 3);
+            elAccZ.textContent = jitter(simData.imu.acc.z, 0.02, 3); // Z is relatively stable around 1g if testing, or 0g in actual orbit. Simulating 1g for bench testing feel.
+
+            elGyrX.textContent = jitter(simData.imu.gyr.x, 2.5, 2);
+            elGyrY.textContent = jitter(simData.imu.gyr.y, 2.5, 2);
+            elGyrZ.textContent = jitter(simData.imu.gyr.z, 2.5, 2);
+
+            // BMP280 Simulation (slight atmospheric changes/noise)
+            elBmpPres.textContent = jitter(simData.bmp.pres, 0.5, 2);
+            elBmpAlt.textContent = jitter(simData.bmp.alt, 2.0, 1);
+
+            // DHT11 Simulation (internal thermal fluctuations)
+            elDhtTemp.textContent = jitter(simData.dht.temp, 0.2, 1);
+            elDhtHum.textContent = jitter(simData.dht.hum, 0.5, 1);
+
+            // Power Simulation (Battery voltage fluctuating slowly)
+            // Voltage between 7.3 and 7.5 simulating active load
+            let newVol = parseFloat(jitter(simData.power.voltage, 0.02, 2));
+            if(newVol > 7.45) newVol = 7.45; // Cap values for realism
+            if(newVol < 7.30) newVol = 7.30;
+            simData.power.voltage = newVol;
+            elBatVol.textContent = newVol.toFixed(2);
+            
+            // Update battery bar width based on 6.0V (empty) to 8.4V (full) range for a standard 2S Li-ion battery
+            let percentage = ((newVol - 6.0) / (8.4 - 6.0)) * 100;
+            elBatBar.style.width = percentage + '%';
+        }
+
+        // Initialize and start update loop every 1.2 seconds
+        updateTelemetry();
+        setInterval(updateTelemetry, 1200);
+
+    </script>
+</body>
+</html>
